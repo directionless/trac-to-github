@@ -1,0 +1,31 @@
+# github limits API access to 60/minute. So each request must take at
+# least 1s. So add some sleeps
+sleep: 1
+
+# Github settings
+# gh_user:  What user/org the repo we're pushing lives
+# gh_repository: The name of the repo
+# gh_login: what we auth as
+# gh_token: auth token
+gh_user: example
+gh_repository: test
+# gh_login: (this will pull from .gitconfig)
+# gh_token: (this will pull from .gitconfig) 
+
+# Where is the trac DB
+# what's the trac URL (used only in GH comments)
+trac_db: trac.db
+trac_url: https://trac.example.com/indigo
+
+# mapping of the trac statuses to the GH statuses
+status_map:
+  assigned: open
+  closed: closed
+  new: open
+
+priority_map:
+  blocker: elevated
+  critical: elevated
+  major: elevated
+  minor: low
+  trivial: low
