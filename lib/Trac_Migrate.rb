@@ -3,7 +3,8 @@ require 'sqlite3'
 require 'Octokit'
 require 'pp'
 
-# pandoc or not, this should be harmless.
+# Some tweaks to the pandoc modules. Should be harmless to include
+# even if not used.
 module Pandoku; PANDOC_PATH = "#{ENV['HOME']}/.cabal/bin/pandoc"; end
 
 
@@ -28,8 +29,9 @@ class TracMigrate
   end
 
   def go
-    pp @options
+    #pp @options
   end
+
 
   def migrate_tickets
     ticket_comments_q=@trac_db.prepare("select * from ticket_change where field=\"comment\" and ticket=?")
@@ -64,7 +66,7 @@ class TracMigrate
           @github.add_comment(@gh_repo, 
                               ticket_id, 
                               ["On #{Time.at(trac_ticket_comment['time'])} #{trac_ticket_comment['author']} said:",
-                               trac_ticket_comment['newvalue'],
+                               convert_markup(trac_ticket_comment['newvalue']),
                                "------",
                                "(trac id #{comment_key})",
                               ].join("\n\n"),
@@ -82,7 +84,7 @@ class TracMigrate
 
   def convert_markup(body)
     case
-    when @options[:convert].match(/^pandoc:/)
+    when @options[:convert].match(/^pandoc$/)
       return convert_with_pandoc(body)
     when @options[:convert].match(/^raw$/)
       return body
@@ -92,8 +94,10 @@ class TracMigrate
   end
 
   def convert_with_pandoc(body)
-    require 'pandoku'
-    return body.pandoku(:rst => :markdown)
+    ENV['PATH'] = ENV['PATH'] + ":#{ENV['HOME']}/.cabal/bin"
+    require 'pandoc-ruby'
+    PandocRuby::READERS['moinmoin'] = 'moinmoin'
+    return PandocRuby.convert(body, {:from => :moinmoin, :to => :"markdown"}, 'strict', 'no-wrap')
   end
 
   def debug(message)
@@ -107,7 +111,7 @@ class TracMigrate
                                         title, 
                                         "Autocreated from trac ticket #{trac_id} #{@options[:trac_url]}/ticket/#{trac_id}")
     ticket_id = @gh_issues.last["number"]
-    @github.add_comment(@gh_repo, ticket_id, trac_ticket['description'])
+    @github.add_comment(@gh_repo, ticket_id, convert_markup(trac_ticket['description']))
     @github.add_label(@gh_repo, "trac-import", ticket_id)
     @github.add_label(@gh_repo, @options[:priority_map][trac_ticket['priority'].to_sym], ticket_id) 
     @github.close_issue(@gh_repo, ticket_id) if @options[:status_map][trac_ticket['status'].to_sym].match("closed")
