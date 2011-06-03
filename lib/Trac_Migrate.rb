@@ -34,7 +34,7 @@ class TracMigrate
 
 
   def migrate_tickets
-    ticket_comments_q=@trac_db.prepare("select * from ticket_change where field=\"comment\" and ticket=?")
+    ticket_comments_q=@trac_db.prepare("select * from ticket_change where field=\"comment\" and newvalue <> \"\" and ticket=?")
 
     @trac_db.execute( "select * from ticket" ) do |trac_ticket|
       #p trac_ticket['status']
@@ -66,8 +66,9 @@ class TracMigrate
           @github.add_comment(@gh_repo, 
                               ticket_id, 
                               ["On #{Time.at(trac_ticket_comment['time'])} #{trac_ticket_comment['author']} said:",
+                               "*******",
                                convert_markup(trac_ticket_comment['newvalue']),
-                               "------",
+                               "*******",
                                "(trac id #{comment_key})",
                               ].join("\n\n"),
                             )
@@ -107,17 +108,26 @@ class TracMigrate
   def gh_create_issue(title, trac_ticket)
     trac_id = trac_ticket['id']
 
+
+
     @gh_issues <<  @github.create_issue(@gh_repo, 
                                         title, 
-                                        "Autocreated from trac ticket #{trac_id} #{@options[:trac_url]}/ticket/#{trac_id}")
+                                        ["On #{Time.at(trac_ticket['time'])} #{trac_ticket['reporter']} said:",
+                                         "*******",
+                                         convert_markup(trac_ticket['description']),
+                                         "*******",
+                                         "Autocreated from trac ticket #{trac_id} #{@options[:trac_url]}/ticket/#{trac_id}",
+                                        ].join("\n\n"),
+                                        )
+
+
     ticket_id = @gh_issues.last["number"]
-    @github.add_comment(@gh_repo, ticket_id, convert_markup(trac_ticket['description']))
     @github.add_label(@gh_repo, "trac-import", ticket_id)
     @github.add_label(@gh_repo, @options[:priority_map][trac_ticket['priority'].to_sym], ticket_id) 
     @github.close_issue(@gh_repo, ticket_id) if @options[:status_map][trac_ticket['status'].to_sym].match("closed")
 
-    # 5 actions, so sleep * 5.
-    sleep @options[:sleep] * 5
+    # 4 actions, so sleep 4 times
+    sleep @options[:sleep] * 4
 
     return ticket_id
   end
