@@ -3,6 +3,10 @@ require 'sqlite3'
 require 'Octokit'
 require 'pp'
 
+# pandoc or not, this should be harmless.
+module Pandoku; PANDOC_PATH = "#{ENV['HOME']}/.cabal/bin/pandoc"; end
+
+
 class TracMigrate
 
   public
@@ -18,6 +22,9 @@ class TracMigrate
 
     init_trac
     init_github
+
+    # this sanity checks the converter is defined
+    convert_markup("hi there")
   end
 
   def go
@@ -47,6 +54,7 @@ class TracMigrate
       end
 
       gh_comments = @github.issue_comments(@gh_repo, ticket_id)
+      sleep @options[:sleep]
 
 
       ticket_comments_q.execute(trac_ticket['id']).each do |trac_ticket_comment|
@@ -71,6 +79,22 @@ class TracMigrate
 
 
   private
+
+  def convert_markup(body)
+    case
+    when @options[:convert].match(/^pandoc:/)
+      return convert_with_pandoc(body)
+    when @options[:convert].match(/^raw$/)
+      return body
+    else
+      raise "Unknown convert option - #{@options[:convert]}"
+    end
+  end
+
+  def convert_with_pandoc(body)
+    require 'pandoku'
+    return body.pandoku(:rst => :markdown)
+  end
 
   def debug(message)
     puts message

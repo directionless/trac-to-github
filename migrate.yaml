@@ -17,6 +17,10 @@ gh_repository: test
 trac_db: trac.db
 trac_url: https://trac.example.com/indigo
 
+# how should we convert the content?
+# (see code for supported types)
+convert: raw
+
 # mapping of the trac statuses to the GH statuses
 status_map:
   assigned: open
