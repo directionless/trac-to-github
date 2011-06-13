@@ -22,7 +22,6 @@ class TracMigrate
     end
 
     init_trac
-    init_github
 
     # this sanity checks the converter is defined
     convert_markup("hi there")
@@ -34,6 +33,8 @@ class TracMigrate
 
 
   def migrate_tickets
+    init_github
+
     ticket_comments_q=@trac_db.prepare("select * from ticket_change where field=\"comment\" and newvalue <> \"\" and ticket=?")
 
     @trac_db.execute( "select * from ticket" ) do |trac_ticket|
