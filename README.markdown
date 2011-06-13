@@ -2,6 +2,16 @@ scripts to migrate trac to github.
 
 trac is in a sqlite db, which should make this doable
 
+# UTF8 WTF #
+
+As many people before me have noted, urf8 is confusing. It remains
+so. Some of the trac wiki pages we had contained endashes. This caused
+grit to rather unfortunate things, which left my wiki repo in a broken
+state.
+
+I played around for far to long, and concluded the whole thing was a
+horrible mess, and the ruby 1.9 transition didn't help. So I added
+iconf to convert everything into ascii and called it a day.
 
 # Format Conversion #
 

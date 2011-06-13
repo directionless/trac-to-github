@@ -1,9 +1,9 @@
 require 'yaml'
 require 'sqlite3'
 require 'Octokit'
-require 'grit'
+require 'gollum'
 require 'pp'
-
+require 'iconv'
 
 # Some tweaks to the pandoc modules. Should be harmless to include
 # even if not used.
@@ -34,10 +34,7 @@ class TracMigrate
   end
 
   def init_wiki
-    raise "wiki_dir (#{@options[:wiki_dir]}) doesn't look like a git repo" unless 
-      ::File.exists?(::File.join(@options[:wiki_dir], ".git"))
-    @wiki_repo = Grit::Repo.new(@options[:wiki_dir])
-    @wiki_index = @wiki_repo.index
+    @wiki = Gollum::Wiki.new(@options[:wiki_dir])
   end
 
   def init_trac
@@ -69,13 +66,32 @@ class TracMigrate
   def migrate_wiki
     init_wiki
 
-    Dir.chdir(@options[:wiki_dir]) do
-      @trac_db.execute( "select * from wiki" ).sort { |a,b| a["time"] <=> b["time"] }.each do |page|
-        filename = page["name"]
-        ::File.open(filename, 'w') { |f| f.write(page["text"]) }
-        @wiki_repo.add(filename)
-        @wiki_repo.commit_index(normalize_wiki_commit(page["comment"]))
+    @trac_db.execute( "select * from wiki" ).sort { |a,b| a["time"] <=> b["time"] }.each do |page|
+      commit = { :message => normalize_wiki_commit(page["comment"]),
+        :name => page["author"],
+        :email => page["author"] }
+      
+      # For reasons wholly unclear to me, utf8 is a problem. This is
+      # probably grit's fault, and might be complicated by the rub 1.9
+      # transition. But, we can use iconv to whomp things into
+      # ascii. AFAICT this is mostly occuring for endashes and
+      # emdashes.
+      #
+      # The pandoc routines reconvert back to utf, so we need to run iconv after it.
+      content = Iconv.conv("ASCII//TRANSLIT//IGNORE", "UTF8", convert_markup(page['text']))
+      
+      print "working on #{page['name']},#{page['version']} -> "
+      
+
+      # we have to do this differently for creation and updates.
+      # the docs imply otherwise, but it doesn't really work
+      if @wiki.page(page["name"]).nil?
+        sha = @wiki.write_page(page["name"], :markdown, content, commit)
+      else
+        sha = @wiki.update_page(@wiki.page(page["name"]), page["name"], :markdown, content, commit)
       end
+
+      puts "got #{sha}"
     end
   end
 
