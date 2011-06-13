@@ -22,6 +22,11 @@ wiki_dir: /tmp/test.wiki
 
 wiki_default_commit_message: "No Comment"
 
+# Skip converting pages that match this regexp to the new wiki. Mostly
+# to ignore trac stuff. Modify as needed.
+# We want to match pages that start with Trac, or Wiki, but not WikiStart
+wiki_skip_regexp: ^(RecentChanges|SandBox|CamelCase|JargonFile|TitleIndex|Trac|Wiki(?!Start))
+
 # how should we convert the content?
 # (see code for supported types)
 convert: pandoc

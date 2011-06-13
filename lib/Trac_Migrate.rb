@@ -61,12 +61,15 @@ class TracMigrate
     # otherwise git barfs.
     return(@options[:wiki_default_commit_message]) if orig.nil?
     return(@options[:wiki_default_commit_message]) if orig.empty?
+    return orig
   end
 
   def migrate_wiki
     init_wiki
 
     @trac_db.execute( "select * from wiki" ).sort { |a,b| a["time"] <=> b["time"] }.each do |page|
+      next if( page['name'].match(Regexp.new(@options[:wiki_skip_regexp])) )
+
       commit = { :message => normalize_wiki_commit(page["comment"]),
         :name => page["author"],
         :email => page["author"] }
