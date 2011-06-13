@@ -151,12 +151,21 @@ class TracMigrate
   def convert_markup(body)
     case
     when @options[:convert].match(/^pandoc$/)
-      return convert_with_pandoc(body)
+      content = convert_with_pandoc(body)
     when @options[:convert].match(/^raw$/)
-      return body
+      content =  body
     else
       raise "Unknown convert option - #{@options[:convert]}"
     end
+    
+    # For reasons wholly unclear to me, utf8 is a problem. This is
+    # probably grit's fault, and might be complicated by the rub 1.9
+    # transition. But, we can use iconv to whomp things into
+    # ascii. AFAICT this is mostly occuring for endashes and
+    # emdashes.
+    #
+    # The pandoc routines reconvert back to utf, so we need to run iconv after it.
+    return Iconv.conv("ASCII//TRANSLIT//IGNORE", "UTF8", content)
   end
 
   def convert_with_pandoc(body)
