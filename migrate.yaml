@@ -17,6 +17,11 @@ gh_repository: test
 trac_db: trac.db
 trac_url: https://trac.example.com/indigo
 
+# Where should we dump the wiki to?
+wiki_dir: /tmp/test.wiki
+
+wiki_default_commit_message: "No Comment"
+
 # how should we convert the content?
 # (see code for supported types)
 convert: pandoc

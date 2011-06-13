@@ -1,7 +1,9 @@
 require 'yaml'
 require 'sqlite3'
 require 'Octokit'
+require 'grit'
 require 'pp'
+
 
 # Some tweaks to the pandoc modules. Should be harmless to include
 # even if not used.
@@ -29,6 +31,52 @@ class TracMigrate
 
   def go
     #pp @options
+  end
+
+  def init_wiki
+    raise "wiki_dir (#{@options[:wiki_dir]}) doesn't look like a git repo" unless 
+      ::File.exists?(::File.join(@options[:wiki_dir], ".git"))
+    @wiki_repo = Grit::Repo.new(@options[:wiki_dir])
+    @wiki_index = @wiki_repo.index
+  end
+
+  def init_trac
+    @trac_db = SQLite3::Database.new(@options[:trac_db])
+    @trac_db.results_as_hash = true
+  end
+
+  def init_github
+    @github = Octokit::Client.new(:login => @options[:gh_login], 
+                                  :token => @options[:gh_token])
+    @gh_repo = Octokit::Repository.new("#{@options[:gh_user]}/#{@options[:gh_repository]}")
+
+    # Find all existing tickets. We're basically trading memory for
+    # fewer GH searches later.
+    @gh_issues = @github.list_issues(@gh_repo, "open")
+    @gh_issues << @github.list_issues(@gh_repo, "closed")
+    @gh_issues.flatten!
+  end
+
+
+  def normalize_wiki_commit(orig)
+    # I don't understand why, but commits are sometimes nil and
+    # sometimes blank. We should ensure there's something there,
+    # otherwise git barfs.
+    return(@options[:wiki_default_commit_message]) if orig.nil?
+    return(@options[:wiki_default_commit_message]) if orig.empty?
+  end
+
+  def migrate_wiki
+    init_wiki
+
+    Dir.chdir(@options[:wiki_dir]) do
+      @trac_db.execute( "select * from wiki" ).sort { |a,b| a["time"] <=> b["time"] }.each do |page|
+        filename = page["name"]
+        ::File.open(filename, 'w') { |f| f.write(page["text"]) }
+        @wiki_repo.add(filename)
+        @wiki_repo.commit_index(normalize_wiki_commit(page["comment"]))
+      end
+    end
   end
 
 
@@ -133,22 +181,6 @@ class TracMigrate
     return ticket_id
   end
 
-  def init_trac
-    @trac_db = SQLite3::Database.new(@options[:trac_db])
-    @trac_db.results_as_hash = true
-  end
-
-  def init_github
-    @github = Octokit::Client.new(:login => @options[:gh_login], 
-                                  :token => @options[:gh_token])
-    @gh_repo = Octokit::Repository.new("#{@options[:gh_user]}/#{@options[:gh_repository]}")
-
-    # Find all existing tickets. We're basically trading memory for
-    # fewer GH searches later.
-    @gh_issues = @github.list_issues(@gh_repo, "open")
-    @gh_issues << @github.list_issues(@gh_repo, "closed")
-    @gh_issues.flatten!
-  end
 
   def read_gitconfig
     config = {}
