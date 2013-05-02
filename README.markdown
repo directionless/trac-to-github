@@ -13,6 +13,9 @@ I played around for far to long, and concluded the whole thing was a
 horrible mess, and the ruby 1.9 transition didn't help. So I added
 iconf to convert everything into ascii and called it a day.
 
+NOTE: I'm only converting the body text to ascii. I didn't have
+non-ascii in titles/summaries/commit messages
+
 # Format Conversion #
 
 I wish this was simpler.
