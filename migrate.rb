@@ -8,7 +8,8 @@ options=Hash.new
 options[:config_files] = ["migrate.yaml", "migrate-site.yaml"]
 
 migrate = TracMigrate.new(options=options)
-migrate.migrate_tickets
+#migrate.migrate_tickets
+migrate.migrate_wiki
 #migrate.go
 
 
